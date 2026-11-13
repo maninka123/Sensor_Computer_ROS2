@@ -1,0 +1,9 @@
+[Unit]
+Description=Audit sensor computer readiness once after each boot
+
+[Timer]
+OnBootSec=45
+Unit=sensor-computer-boot-audit.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,13 @@
+FROM sensor-computer:jazzy-dev
+COPY vendor/sdk/spinnaker-4.4.0.246-noble-arm64/ /tmp/spinnaker/
+RUN echo 'libspinnaker libspinnaker/accepted-flir-eula boolean true' | debconf-set-selections
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      /tmp/spinnaker/libgentl_4.4.0.246_arm64.deb \
+      /tmp/spinnaker/libspinnaker_4.4.0.246_arm64.deb \
+      /tmp/spinnaker/libspinnaker-dev_4.4.0.246_arm64.deb \
+    && ldconfig \
+    && dpkg-query -W libspinnaker libspinnaker-dev \
+    && test -r /opt/spinnaker/include/Spinnaker.h \
+    && ! ldd /opt/spinnaker/lib/libSpinnaker.so | grep 'not found' \
+    && rm -rf /tmp/spinnaker /var/lib/apt/lists/*
+ENV SPINNAKER_ROOT_DIR=/opt/spinnaker

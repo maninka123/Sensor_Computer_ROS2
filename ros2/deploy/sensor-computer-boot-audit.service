@@ -1,0 +1,10 @@
+[Unit]
+Description=Record ROCK 5C post-boot readiness without assuming live sensors
+Wants=docker.service NetworkManager.service
+After=docker.service NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/sensor-computer/boot_audit.py
+TimeoutStartSec=60
+NoNewPrivileges=true

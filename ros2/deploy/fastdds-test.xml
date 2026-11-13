@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+ <transport_descriptors><transport_descriptor>
+  <transport_id>loopback_udp</transport_id><type>UDPv4</type>
+  <interfaceWhiteList><address>127.0.0.1</address></interfaceWhiteList>
+ </transport_descriptor></transport_descriptors>
+ <participant profile_name="test_domain73" is_default_profile="true"><rtps>
+  <userTransports><transport_id>loopback_udp</transport_id></userTransports>
+  <useBuiltinTransports>false</useBuiltinTransports>
+  <builtin>
+
+   <initialPeersList><locator><udpv4><address>127.0.0.1</address><port>25660</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25662</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25664</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25666</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25668</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25670</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25672</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25674</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25676</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25678</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25680</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25682</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25684</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25686</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25688</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25690</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25692</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25694</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25696</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25698</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25700</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25702</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25704</port></udpv4></locator><locator><udpv4><address>127.0.0.1</address><port>25706</port></udpv4></locator></initialPeersList>
+  </builtin>
+ </rtps></participant>
+</profiles>

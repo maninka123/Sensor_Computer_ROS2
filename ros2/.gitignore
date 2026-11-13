@@ -1,0 +1,6 @@
+build/
+install/
+log/
+vendor/
+state/
+__pycache__/

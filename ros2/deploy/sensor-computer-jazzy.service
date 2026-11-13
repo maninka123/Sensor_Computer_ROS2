@@ -1,0 +1,29 @@
+[Unit]
+Description=ROCK 5C ROS 2 Jazzy sensor computer
+Requires=docker.service
+PartOf=docker.service
+After=docker.service NetworkManager.service
+StartLimitIntervalSec=0
+Conflicts=node-pc.service node-pc-rosbridge.service node-pc-transport-supervisor.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --mode=block --who=SensorComputer --why=ContinuousSensorAcquisition /usr/local/lib/sensor-computer/run-container.sh
+ExecStartPost=/usr/local/lib/sensor-computer/wait-ready.sh
+ExecStop=-/usr/local/lib/sensor-computer/stop-container.sh
+ExecStopPost=-/usr/local/lib/sensor-computer/stop-container.sh
+Restart=always
+RestartSec=20
+TimeoutStartSec=215
+TimeoutStopSec=45
+KillMode=control-group
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+LogNamespace=sensor-computer
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target docker.service

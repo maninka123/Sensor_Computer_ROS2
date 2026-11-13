@@ -1,0 +1,10 @@
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain Id="any">
+    <General>
+      <Interfaces><NetworkInterface name="end1" priority="default" multicast="true"/></Interfaces>
+      <AllowMulticast>spdp</AllowMulticast>
+      <MaxMessageSize>1400B</MaxMessageSize>
+    </General>
+    <Discovery><Peers><Peer Address="10.20.0.10"/></Peers></Discovery>
+  </Domain>
+</CycloneDDS>
