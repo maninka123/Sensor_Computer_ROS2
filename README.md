@@ -9,3 +9,7 @@ Sensor addresses: 10.20.0.61/24 and 192.168.1.50/24 on end1. ROSBridge: ws://10.
 Systemd starts independently of desktop login, internet and the Windows client. Readiness requires actual changing sensor/output samples. Software tests pass with synthetic data; physical sensors, Windows, reboot and power-cycle commissioning remain pending.
 
 SDK binaries, logs, build outputs and runtime state are excluded. The original ROS 1 repository remains unchanged at https://github.com/maninka123/Sensor_Computer. See LICENSE.
+
+## UNSW collection
+
+Pushes to personal `main` automatically update `Sensor_Computer_ROS2/` in the [UNSW AMT collection](https://github.com/unsw-edu-au/AMT-project). See [repository sync and existing working folders](docs/amt-repository-sync.md).
