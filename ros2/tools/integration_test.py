@@ -133,7 +133,9 @@ class PipelineAcceptance(unittest.TestCase):
         self.spin_until(lambda: self.state.get('/voxel_downsampling/status') is False)
         self.controls['/voxel_leaf_size'].publish(Float64(data=.04))
         self.spin_until(lambda: self.state.get('/voxel_leaf_size/status') == .04)
-        self.controls['/voxel_leaf_size'].publish(Float64(data=-1.0))
+        for invalid in [-1.0, 0.0, float('nan'), float('inf'), 1e-300, 1e300]:
+            self.controls['/voxel_leaf_size'].publish(Float64(data=invalid))
+            rclpy.spin_once(self.node, timeout_sec=.05)
         start = time.monotonic()
         self.spin_until(lambda: time.monotonic()-start>1)
         self.assertEqual(self.state.get('/voxel_leaf_size/status'), .04)
@@ -222,6 +224,52 @@ class PipelineAcceptance(unittest.TestCase):
         finally:
             type(self).publish_enabled=True
 
+    def test_06b_bridge_watchdog_tolerates_one_failure_but_detects_sustained_failure(self):
+        import base64,hashlib,socketserver,threading
+        state={'fail_once':False,'fail_always':False,'failures':0}
+        class Handler(socketserver.BaseRequestHandler):
+            def handle(self):
+                self.request.settimeout(2)
+                request=b''
+                while b'\r\n\r\n' not in request:
+                    chunk=self.request.recv(4096)
+                    if not chunk:return
+                    request+=chunk
+                if state['fail_once'] or state['fail_always']:
+                    state['fail_once']=False
+                    state['failures']+=1
+                    self.request.sendall(b'HTTP/1.1 503 Unavailable\r\nContent-Length: 0\r\n\r\n')
+                    return
+                headers=dict(line.split(b':',1) for line in request.split(b'\r\n')[1:] if b':' in line)
+                key=next(v.strip() for k,v in headers.items() if k.lower()==b'sec-websocket-key')
+                accept=base64.b64encode(hashlib.sha1(key+b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest())
+                self.request.sendall(b'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+accept+b'\r\n\r\n')
+        server=socketserver.ThreadingTCPServer(('127.0.0.1',0),Handler)
+        server.daemon_threads=True
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        path=Path(self.tmp.name)/'bridge-watchdog.log'
+        with path.open('w') as log:
+            process=subprocess.Popen(['ros2','run','node_pc','healthcheck.py',
+                '--bridge-url','ws://127.0.0.1:'+str(server.server_address[1]),
+                '--bridge-check-interval','.3','--bridge-timeout','.5','--bridge-retries','3',
+                '--startup-timeout','10','--max-age','5'],stdout=log,stderr=subprocess.STDOUT)
+            try:
+                self.spin_until(lambda:'PASS: fresh' in path.read_text(),15)
+                state['fail_once']=True
+                self.spin_until(lambda:state['failures']==1,5)
+                start=time.monotonic()
+                self.spin_until(lambda:time.monotonic()-start>1,5)
+                self.assertIsNone(process.poll(),'A transient handshake failure restarted healthy acquisition')
+                state['fail_always']=True
+                self.spin_until(lambda:process.poll() is not None,10)
+                self.assertNotEqual(process.returncode,0)
+                self.assertIn('FAIL: missing or stalled streams: ROSBridge WebSocket',path.read_text())
+            finally:
+                if process.poll() is None:
+                    process.send_signal(signal.SIGINT)
+                    process.wait(timeout=5)
+                server.shutdown();server.server_close();thread.join(timeout=2)
+
     def test_07_timestamp_reversal_recovers(self):
         type(self).stamp_offset=-30_000_000_000
         before = self.clouds[-1].header.stamp
@@ -230,6 +278,38 @@ class PipelineAcceptance(unittest.TestCase):
         finally:
             type(self).stamp_offset=0
         self.spin_until(lambda: self.clouds[-1].header.stamp.sec >= before.sec, 15)
+
+    def test_07a_late_image_and_malformed_clouds_do_not_stop_fusion(self):
+        import copy
+        now=self.node.get_clock().now().nanoseconds
+        image=Image(height=366,width=484,encoding='bgr8',step=484*3)
+        image.header.stamp.sec,image.header.stamp.nanosec=divmod(now-80000000,10**9)
+        image.data=bytes([255,0,0])*(366*484)
+        self.image_pub.publish(image)
+        valid=PointCloud2(height=1,width=1,point_step=28,row_step=28,is_dense=True,
+                         data=struct.pack('<fffIIII',2.,0.,0.,0,now//10**9,0,0))
+        valid.header.stamp=self.node.get_clock().now().to_msg()
+        names=['x','y','z','source_frame_index','source_frame_stamp_sec',
+               'source_frame_stamp_nsec','image_enhancement_mode']
+        valid.fields=[PointField(name=n,offset=i*4,datatype=PointField.FLOAT32 if i<3 else PointField.UINT32,count=1)
+                      for i,n in enumerate(names)]
+        malformed=[]
+        item=copy.deepcopy(valid);item.data=b'';malformed.append(item)
+        item=copy.deepcopy(valid);item.fields[0].offset=28;malformed.append(item)
+        item=copy.deepcopy(valid);item.fields[0].datatype=PointField.FLOAT64;malformed.append(item)
+        item=copy.deepcopy(valid);item.is_bigendian=True;malformed.append(item)
+        item=copy.deepcopy(valid);item.data=struct.pack('<fffIIII',2.,0.,0.,0,now//10**9,10**9,0);malformed.append(item)
+        publishers=[self.node.create_publisher(PointCloud2,t,5) for t in ['/livox/lidar_merged','/livox/lidar_filtered']]
+        try:
+            self.spin_until(lambda: all(p.get_subscription_count()>0 for p in publishers),5)
+            for item in malformed:
+                for publisher in publishers:publisher.publish(item)
+                rclpy.spin_once(self.node,timeout_sec=.05)
+            baseline=self.clouds[-1].header.stamp
+            self.spin_until(lambda:self.clouds[-1].header.stamp!=baseline,10)
+            self.assertIsNone(self.process.poll())
+        finally:
+            for publisher in publishers:self.node.destroy_publisher(publisher)
 
     def test_08_essential_node_exit_stops_complete_launch(self):
         import re

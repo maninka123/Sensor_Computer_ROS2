@@ -47,6 +47,25 @@ class StreamHealthTests(unittest.TestCase):
         tracker.observe('/cloud',sample(nanosec=2),True)
         self.assertEqual(tracker.seen['/cloud'],10)
 
+    def test_repeating_cached_stamp_cycle_is_not_fresh(self):
+        tracker=SAMPLE.FreshnessTracker(clock=lambda:10)
+        tracker.observe('/cloud',sample(sec=100),True)
+        tracker.observe('/cloud',sample(sec=101),True)
+        tracker.clock=lambda:100
+        for _ in range(4):
+            tracker.observe('/cloud',sample(sec=100),True)
+            tracker.observe('/cloud',sample(sec=101),True)
+        self.assertEqual(tracker.seen['/cloud'],10)
+
+    def test_strict_image_rejects_empty_and_truncated_payload(self):
+        header=sample(width=2)
+        # mono8 encoding string, endian octet, aligned step and byte sequence.
+        image=header+struct.pack('<I',6)+b'mono8\0'+b'\0'+b'\0'+struct.pack('<II',2,2)+b'AB'
+        self.assertEqual(SAMPLE.sensor_stamp(image,'image'),(100,1))
+        self.assertIsNone(SAMPLE.sensor_stamp(image[:-1],'image'))
+        empty=header+struct.pack('<I',6)+b'mono8\0'+b'\0'+b'\0'+struct.pack('<II',2,0)
+        self.assertIsNone(SAMPLE.sensor_stamp(empty,'image'))
+
     def test_clock_reversal_counts_as_new_data(self):
         tracker=SAMPLE.FreshnessTracker(clock=lambda:10)
         tracker.observe('/cloud',sample(sec=100),True)

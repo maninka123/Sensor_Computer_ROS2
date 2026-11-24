@@ -15,6 +15,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <node_pc/qos.hpp>
+#include <node_pc/cloud_validation.hpp>
 #include <chrono>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -80,9 +81,14 @@ private:
     return std::isfinite(value) && value > 0.0;
   }
 
+  static bool validLeaf(double value)
+  {
+    return std::isfinite(value) && value >= 0.0001 && value <= 10.0;
+  }
+
   void validateConfiguration()
   {
-    if (!validPositive(leaf_size_))
+    if (!validLeaf(leaf_size_))
     {
       RCLCPP_WARN_STREAM(this->get_logger(), "Invalid configured voxel leaf_size=" << leaf_size_
                       << "; using default " << kDefaultLeafSize << " m");
@@ -113,7 +119,7 @@ private:
 
   void leafSizeCallback(const std_msgs::msg::Float64::ConstSharedPtr& msg)
   {
-    if (!validPositive(msg->data))
+    if (!validLeaf(msg->data))
     {
       RCLCPP_WARN_STREAM(this->get_logger(), "Ignoring invalid voxel leaf size " << msg->data
                       << " m; current value remains " << leaf_size_ << " m");
@@ -138,6 +144,12 @@ private:
 
   bool readGroups(const sensor_msgs::msg::PointCloud2& msg, std::vector<FrameGroup>& groups) const
   {
+    if (!node_pc::indexed_cloud_valid(msg))
+    {
+      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+          "Ignoring malformed indexed cloud layout or payload");
+      return false;
+    }
     try
     {
       sensor_msgs::PointCloud2ConstIterator<float> x(msg, "x");
@@ -154,6 +166,11 @@ private:
       const std::size_t count = static_cast<std::size_t>(msg.width) * msg.height;
       for (std::size_t i = 0; i < count; ++i, ++x, ++y, ++z, ++source, ++sec, ++nsec, ++mode)
       {
+        if (*sec > 2147483647U || *nsec >= 1000000000U || *mode > 1U)
+        {
+          RCLCPP_WARN_STREAM(this->get_logger(), "Ignoring invalid source timestamp or image mode");
+          return false;
+        }
         std::size_t group_position;
         if (!groups.empty() && groups.back().index == *source)
         {

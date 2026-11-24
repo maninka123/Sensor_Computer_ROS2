@@ -139,8 +139,8 @@ sensors or invoke these tools automatically at boot. Restore acquisition with
 
 New physical camera/LiDAR calibration and projection accuracy need validation;
 old calibration values were preserved. CameraInfo has no verified calibration
-file. Occasional out-of-order camera timestamps clear fusion history and can
-drop batches; the stream subsequently resumes. Long-duration rates/thermal
+file. The initial out-of-order camera issue was traced to a LIFO driver queue and
+corrected during the later [reliability review](RELIABILITY.md). Long-duration rates/thermal
 behaviour, physical unplug/reconnect, full shutdown/boot/power loss and sensor
 persistent settings after physical power cycling remain pending. SSH reachability
 from Windows is observed, but Windows login, rendering, DDS firewall/discovery,

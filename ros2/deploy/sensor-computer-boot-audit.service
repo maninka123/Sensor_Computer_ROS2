@@ -1,5 +1,5 @@
 [Unit]
-Description=Record ROCK 5C post-boot readiness without assuming live sensors
+Description=Record ROCK 5C live readiness and reboot verification
 Wants=docker.service NetworkManager.service
 After=docker.service NetworkManager.service
 

@@ -210,3 +210,6 @@ recording durability or physical power-cycle result is claimed.
 Live hardware was commissioned on 2026-11-24. See [COMMISSIONING.md](COMMISSIONING.md)
 for the device identity changes, persistent network settings, DDS receive-buffer
 tuning, SSH setup, measured live data and remaining physical acceptance checks.
+
+See [RELIABILITY.md](RELIABILITY.md) for fault-injection results and the guarded
+reboot baseline / post-boot verification procedure.

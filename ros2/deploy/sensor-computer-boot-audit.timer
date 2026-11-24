@@ -1,8 +1,9 @@
 [Unit]
-Description=Audit sensor computer readiness once after each boot
+Description=Audit sensor computer readiness after boot and during recovery
 
 [Timer]
 OnBootSec=45
+OnUnitInactiveSec=60
 Unit=sensor-computer-boot-audit.service
 
 [Install]

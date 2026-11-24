@@ -61,7 +61,8 @@ def check_dds(args):
 
 def check_websocket(args):
     import websocket
-    ws=websocket.create_connection(args.url,timeout=1)
+    ws=websocket.create_connection(args.url,timeout=5)
+    ws.settimeout(1)
     latest=[]
     seen=set()
     leaf=None
@@ -115,7 +116,8 @@ def check_websocket(args):
             # acknowledgements. Use a fresh control/status connection, as the
             # Central application should when it needs responsive controls.
             ws.close()
-            ws=websocket.create_connection(args.url,timeout=1)
+            ws=websocket.create_connection(args.url,timeout=5)
+            ws.settimeout(1)
             send({'op':'subscribe','id':'control_status','topic':'/voxel_leaf_size/status',
                   'type':'std_msgs/msg/Float64','qos':state_qos})
             send({'op':'advertise','topic':'/voxel_leaf_size','type':'std_msgs/msg/Float64'})

@@ -68,6 +68,13 @@ def main():
         '  include(cmake/DownloadSpinnaker.cmake)\n  download_spinnaker(SPINNAKER_LIBRARIES SPINNAKER_INCLUDE_DIRS)',
         '  message(FATAL_ERROR "Install the supplied Noble ARM64 Spinnaker SDK; automatic fallback downloads are disabled")')
     flir_cmake.write_text(text)
+    # The pinned camera worker pops a deque from the back, reversing queued
+    # arrival stamps after short CPU stalls. Preserve acquisition order.
+    camera = VENDOR/'flir/spinnaker_camera_driver/src/camera.cpp'
+    text = camera.read_text().replace(
+        'img = bufferQueue_.back();\n          bufferQueue_.pop_back();',
+        'img = bufferQueue_.front();\n          bufferQueue_.pop_front();')
+    camera.write_text(text)
     # Exclude packages outside the production camera driver dependency graph.
     for name in ['flir_camera_description', 'spinnaker_synchronized_camera_driver']:
         (VENDOR/'flir'/name/'COLCON_IGNORE').touch()

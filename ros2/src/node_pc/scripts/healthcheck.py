@@ -20,6 +20,9 @@ def main():
     parser.add_argument('--once', action='store_true')
     parser.add_argument('--no-imu', action='store_true')
     parser.add_argument('--bridge-url', default='')
+    parser.add_argument('--bridge-timeout', type=float, default=5)
+    parser.add_argument('--bridge-check-interval', type=float, default=15)
+    parser.add_argument('--bridge-retries', type=int, default=3)
     parser.add_argument('--storage-path', default='/tmp')
     parser.add_argument('--min-free-mb', type=float, default=2048)
     args, ros_args = parser.parse_known_args()
@@ -34,13 +37,14 @@ def main():
     subscriptions = []
     for topic, message in topics.items():
         subscriptions.append(node.create_subscription(
-            message, topic, lambda data, *, t=topic, geometry=message in (Image,PointCloud2): tracker.observe(t,data,geometry),
+            message, topic, lambda data, *, t=topic, geometry={Image:'image',PointCloud2:'cloud',Imu:'imu'}[message]: tracker.observe(t,data,geometry),
             qos_profile_sensor_data, raw=True))
     started = time.monotonic()
     healthy_once = False
     next_report = started
     next_bridge_check = started
     bridge_ok = not bool(args.bridge_url)
+    bridge_failures = 0
     result = 1
     try:
         while rclpy.ok():
@@ -53,12 +57,14 @@ def main():
             if args.bridge_url and now >= next_bridge_check:
                 import websocket
                 try:
-                    connection = websocket.create_connection(args.bridge_url, timeout=2)
+                    connection = websocket.create_connection(args.bridge_url, timeout=args.bridge_timeout)
                     connection.close()
                     bridge_ok = True
+                    bridge_failures = 0
                 except Exception:
                     bridge_ok = False
-                next_bridge_check = now+15
+                    bridge_failures += 1
+                next_bridge_check = now+args.bridge_check_interval
             if not bridge_ok:
                 missing.append('ROSBridge WebSocket')
             if not missing:
@@ -68,11 +74,15 @@ def main():
                 if args.once:
                     result = 0
                     break
-            if (healthy_once and missing) or (not healthy_once and now-started > args.startup_timeout):
+            fatal_missing = [item for item in missing if item != 'ROSBridge WebSocket']
+            if bridge_failures >= args.bridge_retries:
+                fatal_missing.append('ROSBridge WebSocket')
+            if (healthy_once and fatal_missing) or (not healthy_once and now-started > args.startup_timeout):
                 print('FAIL: missing or stalled streams: '+', '.join(missing), flush=True)
                 break
             if now >= next_report:
-                print(json.dumps({'healthy': not missing, 'missing': missing}), flush=True)
+                print(json.dumps({'healthy': not missing, 'missing': missing,
+                                  'bridge_failures': bridge_failures}), flush=True)
                 next_report = now+15
     except (KeyboardInterrupt, ExternalShutdownException):
         result = 0

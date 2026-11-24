@@ -19,6 +19,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <node_pc/qos.hpp>
+#include <node_pc/cloud_validation.hpp>
 #include <chrono>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -298,6 +299,14 @@ private:
     }
     if (!buffer.empty() && rclcpp::Time(msg->header.stamp) < rclcpp::Time(buffer.back()->header.stamp))
     {
+      const double backwards = (rclcpp::Time(buffer.back()->header.stamp) -
+                                rclcpp::Time(msg->header.stamp)).seconds();
+      if (backwards <= 0.5)
+      {
+        RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+            "Ignoring late camera frame (" << backwards << " s) without resetting fusion");
+        return;
+      }
       // Rosbag loops and sensor-clock resets must not mix images or pending
       // clouds from two different passes through the time domain.
       buffer.clear();
@@ -438,6 +447,12 @@ private:
 
   bool readGroups(const sensor_msgs::msg::PointCloud2& cloud, std::vector<SourceGroup>& groups) const
   {
+    if (!node_pc::indexed_cloud_valid(cloud))
+    {
+      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+          "Ignoring malformed indexed cloud layout or payload");
+      return false;
+    }
     try
     {
       sensor_msgs::PointCloud2ConstIterator<float> x(cloud, "x");
@@ -453,6 +468,11 @@ private:
       const std::size_t count = static_cast<std::size_t>(cloud.width) * cloud.height;
       for (std::size_t i = 0; i < count; ++i, ++x, ++y, ++z, ++source, ++sec, ++nsec, ++mode)
       {
+        if (*sec > 2147483647U || *nsec >= 1000000000U || *mode > 1U)
+        {
+          RCLCPP_WARN_STREAM(this->get_logger(), "Ignoring invalid source timestamp or image mode");
+          return false;
+        }
         std::size_t group_position;
         if (!groups.empty() && groups.back().index == *source)
         {
@@ -686,8 +706,13 @@ private:
     const double radial = 1.0 + k1_ * r2 + k2_ * r4 + k3_ * r4 * r2;
     const double xd = xn * radial + 2.0 * p1_ * xn * yn + p2_ * (r2 + 2.0 * xn * xn);
     const double yd = yn * radial + p1_ * (r2 + 2.0 * yn * yn) + 2.0 * p2_ * xn * yn;
-    const int u = static_cast<int>(std::round(fx_ * (xd + skew_ * yd) + cx_));
-    const int v = static_cast<int>(std::round(fy_ * yd + cy_));
+    const double projected_u = fx_ * (xd + skew_ * yd) + cx_;
+    const double projected_v = fy_ * yd + cy_;
+    if (!std::isfinite(projected_u) || !std::isfinite(projected_v) ||
+        projected_u < 0 || projected_u >= image.cols || projected_v < 0 || projected_v >= image.rows)
+      return cv::Vec3b(0, 0, 0);
+    const int u = static_cast<int>(std::round(projected_u));
+    const int v = static_cast<int>(std::round(projected_v));
     if (u < 0 || u >= image.cols || v < 0 || v >= image.rows)
     {
       return cv::Vec3b(0, 0, 0);
