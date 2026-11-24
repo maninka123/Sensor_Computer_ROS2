@@ -27,6 +27,7 @@ def bringup(context):
         overrides = {}
         if name == 'lidar_timestamp_shift':
             overrides['auto_timestamp_offset'] = hardware
+            overrides['normalize_livox_imu'] = hardware
             if not hardware:
                 # Tests/playback supply ROS-clock timestamps. Legacy ROS 1 bags
                 # require explicit conversion rather than the old fixed epoch offset.
@@ -47,11 +48,11 @@ def bringup(context):
                      'publish_freq': 10.0, 'output_data_type': 0,
                      'frame_id': 'livox_frame',
                      'user_config_path': str(share / 'config/livox.json'),
-                     'cmdline_input_bd_code': os.getenv('LIVOX_BROADCAST_CODE', '3JEDLB30015Y251'),
-                 }]),
+                     'cmdline_input_bd_code': os.getenv('LIVOX_BROADCAST_CODE', '3JEDN920015M711'),
+                 }], remappings=[('/livox/imu', '/livox/imu_raw')]),
             Node(package='spinnaker_camera_driver', executable='camera_driver_node',
                  name='camera', output='screen', parameters=[{
-                     'serial_number': os.getenv('FLIR_CAMERA_SERIAL', '24510717'),
+                     'serial_number': os.getenv('FLIR_CAMERA_SERIAL', '25120439'),
                      'parameter_file': camera_mapping, 'frame_id': 'camera',
                      'retry_attempts': 5, 'connect_while_subscribed': False,
                      'buffer_queue_size': 4, 'image_queue_size': 2,
@@ -61,10 +62,7 @@ def bringup(context):
                      'gev_scps_packet_size': 1400, 'gev_scpd': 1000,
                      'exposure_auto': 'Continuous', 'auto_exposure_time_upper_limit': 20000.0,
                      'gain_auto': 'Continuous', 'gamma_enable': True, 'gamma': 0.75,
-                     'sharpening_enable': True, 'auto_sharpness': True,
-                     'saturation_enable': False,
                      'stream_buffer_count_mode': 'Manual', 'stream_buffer_count': 64,
-                     'stream_packet_resend_enable': True,
                  }]),
             Node(package='imu_complementary_filter', executable='complementary_filter_node',
                  name='complementary_filter_gain_node', output='screen', parameters=[{

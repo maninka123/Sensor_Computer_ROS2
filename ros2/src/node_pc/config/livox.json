@@ -1,7 +1,7 @@
 {
   "lidar_config": [
     {
-      "broadcast_code": "3JEDLB30015Y251",
+      "broadcast_code": "3JEDN920015M711",
       "enable_connect": true,
       "enable_fan": true,
       "return_mode": 0,

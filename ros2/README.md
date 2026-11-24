@@ -66,8 +66,8 @@ The wrapper handles this session's not-yet-refreshed Docker group membership.
 | Sensor Ethernet interface | `end1` |
 | Sensor/server address | `10.20.0.61/24` |
 | Livox host address on the same interface | `192.168.1.50/24` |
-| FLIR Blackfly S | `10.20.0.22`, serial `24510717` |
-| Original Livox Avia | `192.168.1.125`, broadcast code `3JEDLB30015Y251` |
+| FLIR Blackfly S | `10.20.0.22`, serial `25120439` |
+| Original Livox Avia | `192.168.1.125`, broadcast code `3JEDN920015M711` |
 | Central computer | `10.20.0.10/24` |
 | ROSBridge | `ws://10.20.0.61:9090` |
 | DDS domain for this first ROS 2 rig | `0`, per the supplied Central device configuration |
@@ -206,3 +206,7 @@ records infrastructure and live sensor readiness separately. Restart the app wit
 the owning unit. Production uses systemd alone for retries, with no competing
 Docker restart policy. The default pipeline does not record bags locally; no
 recording durability or physical power-cycle result is claimed.
+
+Live hardware was commissioned on 2026-11-24. See [COMMISSIONING.md](COMMISSIONING.md)
+for the device identity changes, persistent network settings, DDS receive-buffer
+tuning, SSH setup, measured live data and remaining physical acceptance checks.

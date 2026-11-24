@@ -12,7 +12,8 @@ install -d -m 0700 "$backup"
 for path in /etc/systemd/system/sensor-computer-jazzy.service \
     /etc/systemd/system/sensor-computer-boot-audit.service \
     /etc/systemd/system/sensor-computer-boot-audit.timer /etc/sensor-computer \
-    /usr/local/lib/sensor-computer /etc/systemd/journald@sensor-computer.conf; do
+    /usr/local/lib/sensor-computer /etc/systemd/journald@sensor-computer.conf \
+    /etc/sysctl.d/90-sensor-computer-dds.conf; do
   if [[ -e "$path" ]]; then
     target="$backup/${path#/}"
     install -d -m 0700 "$(dirname -- "$target")"
@@ -31,6 +32,8 @@ install -m 0644 "$ws/ros2/deploy/sensor-computer-jazzy.service" /etc/systemd/sys
 install -m 0644 "$ws/ros2/deploy/sensor-computer-boot-audit.service" /etc/systemd/system/
 install -m 0644 "$ws/ros2/deploy/sensor-computer-boot-audit.timer" /etc/systemd/system/
 install -m 0644 "$ws/ros2/deploy/journald.conf" /etc/systemd/journald@sensor-computer.conf
+install -m 0644 "$ws/ros2/deploy/90-sensor-computer-dds.conf" /etc/sysctl.d/
+/usr/sbin/sysctl -p /etc/sysctl.d/90-sensor-computer-dds.conf
 systemctl daemon-reload
 systemd-analyze verify /etc/systemd/system/sensor-computer-jazzy.service \
   /etc/systemd/system/sensor-computer-boot-audit.service /etc/systemd/system/sensor-computer-boot-audit.timer

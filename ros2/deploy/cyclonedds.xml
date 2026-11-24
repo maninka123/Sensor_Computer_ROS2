@@ -5,6 +5,9 @@
       <AllowMulticast>spdp</AllowMulticast>
       <MaxMessageSize>1400B</MaxMessageSize>
     </General>
+    <Internal>
+      <SocketReceiveBufferSize min="16MiB"/>
+    </Internal>
     <Discovery><Peers><Peer Address="10.20.0.10"/></Peers></Discovery>
   </Domain>
 </CycloneDDS>

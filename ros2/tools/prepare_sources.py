@@ -30,6 +30,39 @@ def main():
         text = text.replace('    TIMEOUT 60', '    PATCH_COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/patch_sdk.py <SOURCE_DIR>\n    TIMEOUT 60')
     livox_cmake.write_text(text)
     shutil.copy2(ROOT/'tools/patch_livox_sdk.py', VENDOR/'livox/livox_sdk_vendor/patch_sdk.py')
+    # Upstream leaves timesync_ uninitialized when UART time sync is disabled;
+    # DeInitLdsLidar then dereferences that indeterminate pointer at shutdown.
+    header = VENDOR/'livox/livox_ros2_driver/livox_ros2_driver/lds_lidar.h'
+    text = header.read_text().replace('bool enable_timesync_;', 'bool enable_timesync_{false};')
+    text = text.replace('TimeSync *timesync_;', 'TimeSync *timesync_{nullptr};')
+    header.write_text(text)
+    source = VENDOR/'livox/livox_ros2_driver/livox_ros2_driver/lds_lidar.cpp'
+    text = source.read_text()
+    if '  is_initialized_ = false;\n  Uninit();' not in text:
+        text = text.replace('  Uninit();\n  printf("Livox SDK Deinit completely!',
+            '  is_initialized_ = false;\n  Uninit();\n  printf("Livox SDK Deinit completely!')
+    source.write_text(text)
+    driver = VENDOR/'livox/livox_ros2_driver/livox_ros2_driver/livox_ros2_driver.cpp'
+    text = driver.read_text().replace('  signal(SIGINT, SignalHandler);',
+        '  // Keep the ROS 2 signal handler: exit() raced SDK worker teardown.')
+    text = text.replace('  exit_signal_.set_value();\n  poll_thread_->join();',
+        '  exit_signal_.set_value();\n'
+        '  if (lddc_ptr_ && lddc_ptr_->lds_) lddc_ptr_->lds_->semaphore_.Signal();\n'
+        '  poll_thread_->join();')
+    driver.write_text(text)
+    distribution = VENDOR/'livox/livox_ros2_driver/livox_ros2_driver/lddc.cpp'
+    text = distribution.read_text()
+    if '  if (!rclcpp::ok()) return;' not in text:
+        text = text.replace('  lds_->semaphore_.Wait();',
+            '  lds_->semaphore_.Wait();\n  if (!rclcpp::ok()) return;')
+    distribution.write_text(text)
+    # Keep the SDK's bundled old spdlog/fmt symbols private. Exporting them from
+    # the driver interposes Jazzy's newer spdlog and corrupts logger teardown.
+    cmake = VENDOR/'livox/livox_ros2_driver/CMakeLists.txt'
+    text = cmake.read_text()
+    if '--exclude-libs,liblivox_sdk_static.a' not in text:
+        text += '\ntarget_link_options(${PROJECT_NAME} PRIVATE "LINKER:--exclude-libs,liblivox_sdk_static.a")\n'
+    cmake.write_text(text)
     flir_cmake = VENDOR/'flir/spinnaker_camera_driver/CMakeLists.txt'
     text = flir_cmake.read_text().replace(
         '  include(cmake/DownloadSpinnaker.cmake)\n  download_spinnaker(SPINNAKER_LIBRARIES SPINNAKER_INCLUDE_DIRS)',
@@ -38,7 +71,7 @@ def main():
     # Exclude packages outside the production camera driver dependency graph.
     for name in ['flir_camera_description', 'spinnaker_synchronized_camera_driver']:
         (VENDOR/'flir'/name/'COLCON_IGNORE').touch()
-    print('Pinned official driver sources prepared; local changes are limited to SDK pin/download policy.')
+    print('Pinned drivers prepared, including safe Livox shutdown and time-sync initialization.')
 
 
 if __name__ == '__main__':

@@ -1,5 +1,8 @@
 # ROCK 5C verification record
 
+For the 2026-11-24 live hardware results and updated remaining checks, see
+[COMMISSIONING.md](COMMISSIONING.md). The November 13 record below is historical.
+
 Date: 2026-11-13 UTC. Hardware sensors and the Windows Central computer were
 unavailable; the user requested completion of software work with live tests
 explicitly pending. This is a software-verified deployment, not a claim of a
@@ -82,7 +85,7 @@ Re-run `./ros2/tools/verify.sh` and
 dependencies or transport configuration changes. Temporary clients use
 loopback ports 19090/19091 and domains 73/74, not the production endpoint.
 
-## Still pending / not certified
+## Originally pending on 2026-11-13 (superseded by commissioning record)
 
 Actual Avia LiDAR and IMU acquisition; physical camera discovery and acquisition;
 camera's persistent IP/settings; actual 484x366 / 35 FPS output; live timestamp

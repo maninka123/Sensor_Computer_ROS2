@@ -111,6 +111,13 @@ def check_websocket(args):
         if args.check_controls:
             restore=leaf
             target=.03 if abs(leaf-.03)>.0001 else .02
+            # Multi-megabyte cloud JSON already queued on a socket delays small
+            # acknowledgements. Use a fresh control/status connection, as the
+            # Central application should when it needs responsive controls.
+            ws.close()
+            ws=websocket.create_connection(args.url,timeout=1)
+            send({'op':'subscribe','id':'control_status','topic':'/voxel_leaf_size/status',
+                  'type':'std_msgs/msg/Float64','qos':state_qos})
             send({'op':'advertise','topic':'/voxel_leaf_size','type':'std_msgs/msg/Float64'})
             send({'op':'publish','topic':'/voxel_leaf_size','msg':{'data':target}})
             deadline=time.monotonic()+10

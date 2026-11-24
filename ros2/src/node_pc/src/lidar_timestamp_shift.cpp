@@ -8,6 +8,7 @@
 #include <node_pc/qos.hpp>
 #include <chrono>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 
 #include <cmath>
 
@@ -28,6 +29,13 @@ public:
     // capture_offset: compensates for sensor capture delay difference
     capture_offset_ = this->declare_parameter<double>("capture_offset", 0.03243);
     verbose_ = this->declare_parameter<bool>("verbose", false);
+    const bool normalize_imu = this->declare_parameter<bool>("normalize_livox_imu", false);
+    if (normalize_imu)
+    {
+      imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/livox/imu", rclcpp::QoS(10).reliable());
+      imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>("/livox/imu_raw", rclcpp::QoS(50).reliable(),
+          std::bind(&LidarTimestampShift::imuCallback, this, std::placeholders::_1));
+    }
 
     pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(output_topic_, rclcpp::QoS(10).reliable());
     sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(input_topic_, node_pc::subscription_qos<sensor_msgs::msg::PointCloud2>(input_topic_, 10), std::bind(&LidarTimestampShift::callback, this, std::placeholders::_1));
@@ -42,6 +50,26 @@ public:
   }
 
 private:
+  void imuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr& msg)
+  {
+    // The original Avia SDK publishes uptime and acceleration in g. Share the
+    // LiDAR clock conversion, without the camera capture-delay compensation.
+    // Wait for a fresh cloud after reconnect rather than reuse a stale epoch.
+    const double device_time = rclcpp::Time(msg->header.stamp).seconds();
+    if (!auto_offset_initialized_ || std::abs(device_time - last_lidar_time_) > 1.0)
+      return;
+    auto imu = *msg;
+    imu.header.stamp = node_pc::from_seconds(device_time + auto_offset_);
+    constexpr double gravity = 9.80665;
+    imu.linear_acceleration.x *= gravity;
+    imu.linear_acceleration.y *= gravity;
+    imu.linear_acceleration.z *= gravity;
+    for (auto& covariance : imu.linear_acceleration_covariance)
+      covariance *= gravity * gravity;
+    imu.orientation_covariance[0] = -1.0;  // Avia supplies no orientation.
+    imu_pub_->publish(imu);
+  }
+
   void callback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
   {
     sensor_msgs::msg::PointCloud2 shifted = *msg;
@@ -100,6 +128,8 @@ private:
   bool verbose_{false};
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
 };
 
 int main(int argc, char** argv)

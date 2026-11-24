@@ -21,7 +21,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -e RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
   -v "$PWD:/workspace" -w /workspace/ros2 \
   sensor-computer:jazzy-sdk bash -c \
-  'source /opt/ros/jazzy/setup.bash && source install/setup.bash && python3 tools/integration_test.py' \
+  'source /opt/ros/jazzy/setup.bash && source install/setup.bash && python3 tools/imu_normalization_test.py && python3 tools/integration_test.py' \
   2>&1 | tee .local-deploy/integration-tests.log
 python3 ros2/tools/container_recovery_test.py 2>&1 | tee .local-deploy/container-recovery-tests.log
 python3 ros2/tools/acceptance_stamp.py write --expected "$fingerprint"
