@@ -68,9 +68,10 @@ changing the message's timestamps, endian flag, row stride or field definitions.
 Use a supported Jazzy installation, the configured domain, and the Windows
 adapter on `10.20.0.0/24`. Device 8 uses Cyclone DDS. A separate Jazzy Fast DDS
 client received its clouds, IMU and transient-local status in a same-host Linux
-test. The Windows live test received ROSBridge streams; its Cyclone DDS probe
-timed out without discovering Device 8's publishers. See the
-[Windows follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25).
+test. The sensor Cyclone DDS profile selects the monitoring-network address
+from `SENSOR_IP`, which keeps the advertised DDS address correct when the
+interface also carries a Livox address. After a DDS configuration change,
+restart `sensor-computer-jazzy.service` and check from Windows.
 
 `deploy/fastdds-windows.example.xml` is a private-interface/unicast-peer example
 for Central `10.20.0.10`, sensor `10.20.0.61` and domain 0. Review it against the

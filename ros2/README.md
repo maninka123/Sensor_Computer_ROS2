@@ -1,40 +1,51 @@
-# ROCK 5C: Debian 12 host, ROS 2 Jazzy sensor computer
+# Device 8 setup
 
-This deployment keeps the Radxa Debian kernel and desktop and runs Ubuntu 24.04
-ARM64 / ROS 2 Jazzy inside Docker. The original Catkin/Noetic source remains in the upstream Sensor_Computer
-repository and the original local checkout. This ROS 2 repository publishes
-the Jazzy deployment separately; do not run legacy Noetic startup scripts here.
+ROCK 5C runs ROS 2 Jazzy in an Ubuntu 24.04 ARM64 container on Radxa Debian 12. See the [host and SDK details](../docs/ROCK5C_ENVIRONMENT.md) and [ROS 1 migration notes](MIGRATION.md).
 
-Development branch: `deploy/rock5c-debian12-jazzy`.
-See [environment and compatibility](../docs/ROCK5C_ENVIRONMENT.md),
-[migration details](MIGRATION.md), [transport contract](TRANSPORTS.md), and
-[verification results](VERIFICATION.md).
+## Connect one monitoring PC to multiple sensors
 
-## Installation and reproducibility
-
-Docker is installed from Debian's `docker.io` package. The host has no native
-Ubuntu ROS packages or Spinnaker packages. The official ROS ARM64 base image
-is pinned by digest in `docker/Dockerfile`. C++ dependencies, ROS packages,
-Python 3.12, PyTorch 2.6.0 CPU, ONNX Runtime 1.20.1 and NumPy 1.26.4 are inside
-the image. Vendor drivers and the original Avia SDK are pinned by commit in
-`tools/prepare_sources.py`; the source checkouts are ignored under `vendor/`.
-
-This machine's downloaded vendor archive is:
-
-```
-/home/rock/Downloads/spinnaker-4.4.0.246-noble-arm64-pkg.tar.gz
-SHA256 9c4aef63cb070a4734e7e93051898b70aaeac17c13b86ef7cbee8c787554e261
+```mermaid
+flowchart LR
+    M["Windows monitoring PC<br/>10.20.0.10"]
+    S["Device 8<br/>10.20.0.61"]
+    N["Example next sensor PC<br/>10.20.0.71"]
+    M --- S
+    M --- N
+    S --- C["FLIR camera"]
+    S --- L["Livox LiDAR"]
 ```
 
-Obtain that Noble ARM64 package from Teledyne under its licence. Never use the
-original Ubuntu 20.04 / 4.2.0.46 package as a substitute on this image. The
-Docker build records acceptance of the supplied SDK's EULA for unattended
-package installation; analytics are disabled in the runtime user's config.
-Only the GenTL runtime, Spinnaker C++ runtime, and development headers are
-installed; desktop SDK utilities and USB/kernel configuration scripts are
-unnecessary for this GigE application. SDK archives/libraries are not committed.
+| Computer | Ethernet IP | ROSBridge | DDS domain |
+| --- | --- | --- | --- |
+| Windows monitoring PC | `10.20.0.10/24` | Connects to each sensor | Set per app profile |
+| Device 8 | `10.20.0.61/24` | `ws://10.20.0.61:9090` | `0` |
+| Example next sensor PC | `10.20.0.71/24` | `ws://10.20.0.71:9090` | `1` |
 
-From a new local terminal after Docker-group membership is active:
+Keep the monitoring PC's IP. Give each new sensor PC an unused IP and a separate DDS domain when rigs share the default topic names. Set matching values in [the sensor runtime](deploy/runtime.env) and [the Windows profile](deploy/device_8.env.example). Rigs can reuse camera and LiDAR IPs on isolated networks. Devices sharing a VLAN need unique addresses.
+
+| Device 8 hardware | Address or identity |
+| --- | --- |
+| Sensor Ethernet interface | `end1` |
+| FLIR Blackfly S | `10.20.0.22`, serial `25120439` |
+| Livox-facing address on the sensor PC | `192.168.1.50/24` |
+| Livox Avia | `192.168.1.125`, broadcast code `3JEDN920015M711` |
+
+Cyclone DDS advertises the address in the runtime's `SENSOR_IP` setting. Use the sensor's monitoring-network IP there. The network script uses Device 8's addresses. Review the plan and adapt the interface and IPs before using it on another rig.
+
+```bash
+./ros2/tools/configure_network.sh
+sudo bash ros2/tools/configure_network.sh --apply
+```
+
+## Build and install
+
+| Prerequisite | Requirement |
+| --- | --- |
+| Host | Debian 12 ARM64, `docker.io`, Docker group access |
+| Camera SDK | Teledyne Spinnaker `4.4.0.246` for Ubuntu 24.04 Noble ARM64 |
+| SDK archive | `spinnaker-4.4.0.246-noble-arm64-pkg.tar.gz` from Teledyne |
+
+Archive SHA-256 `9c4aef63cb070a4734e7e93051898b70aaeac17c13b86ef7cbee8c787554e261`. The build uses pinned sources and installs the SDK components required for GigE acquisition.
 
 ```bash
 cd /home/rock/Sensor_Computer
@@ -45,184 +56,31 @@ tar -xzf ~/Downloads/spinnaker-4.4.0.246-noble-arm64-pkg.tar.gz -C ros2/vendor/s
 sg docker -c 'python3 ros2/tools/container_recovery_test.py'
 ```
 
-`build.sh` limits compilation to two jobs and builds all six ament packages.
-Existing build results are specific to ARM64, Noble and this workspace path;
-rebuild instead of copying the original ROS 1 `build/` or `devel/` directories.
-The resulting images are `sensor-computer:jazzy-dev` and
-`sensor-computer:jazzy-sdk`. Development CLI access:
+Build in the target workspace. The verification scripts use an isolated loopback test domain. See the [software test record](VERIFICATION.md) for the build and test environment.
 
-```bash
-./ros2/tools/ros.sh --local pkg executables node_pc
-./ros2/tools/ros.sh --local shell
-```
+## Start and operate
 
-`--local` selects an isolated loopback test domain; omit it for the sensor LAN.
-The wrapper handles this session's not-yet-refreshed Docker group membership.
+Connect the powered FLIR and Avia and check that their identities match this rig's settings. Systemd owns one production container and waits for advancing camera, LiDAR, IMU, and fused messages before reporting readiness. It retries without a desktop login, internet connection, or monitoring PC. Use either systemd or the manual Compose deployment at a time.
 
-## One monitoring PC, multiple sensor PCs
+| Task | Command |
+| --- | --- |
+| Install the service only | `sudo bash ros2/tools/install_services.sh --install` |
+| Enable it at boot | `sudo bash ros2/tools/install_services.sh --enable` |
+| Check service status | `systemctl status sensor-computer-jazzy.service` |
+| Restart after changing DDS settings | `sudo systemctl restart sensor-computer-jazzy.service` |
+| View logs | `sudo journalctl --namespace=sensor-computer -u sensor-computer-jazzy.service -f` |
+| Stop or disable | `sudo systemctl stop sensor-computer-jazzy.service` or `sudo systemctl disable --now sensor-computer-jazzy.service` |
 
-Set the Windows monitoring adapter to `10.20.0.10/24`. Each sensor PC has its own address and app profile. All rigs can use ROSBridge port `9090`.
-
-| Computer | Monitoring-network IP | ROSBridge | DDS domain |
-| --- | --- | --- | --- |
-| Windows monitoring PC | `10.20.0.10/24` | Connects to each sensor | Per sensor profile |
-| Device 8 | `10.20.0.61/24` | `ws://10.20.0.61:9090` | `0` |
-| Example additional ROS 2 rig | `10.20.0.71/24` | `ws://10.20.0.71:9090` | `1` |
-
-Use an unused address for each new rig. Set the sensor address and domain in its deployment configuration, then set the same address, ROSBridge port, and domain in its Windows profile. See [`deploy/runtime.env`](deploy/runtime.env) and [`deploy/device_8.env.example`](deploy/device_8.env.example). Give each rig using the default topic names a separate DDS domain, including rigs accessed through ROSBridge. The `configure_network.sh` example is specific to Device 8. Adapt its addresses and interface to the new rig before applying it.
-
-The camera and LiDAR addresses below are used by the sensor PC. Rigs can reuse those internal addresses when their sensor networks are isolated. If the camera or LiDAR traffic shares a switch and VLAN with other rigs, assign unique addresses on the shared network.
-
-## Network values for Device 8
-
-| Component | Setting |
-|---|---|
-| Sensor Ethernet interface | `end1` |
-| Sensor PC address on the monitoring network | `10.20.0.61/24` |
-| Livox host address on the same interface | `192.168.1.50/24` |
-| FLIR Blackfly S | `10.20.0.22`, serial `25120439` |
-| Original Livox Avia | `192.168.1.125`, broadcast code `3JEDN920015M711` |
-| Windows monitoring PC | `10.20.0.10/24` |
-| ROSBridge | `ws://10.20.0.61:9090` |
-| DDS domain for this first ROS 2 rig | `0`, per the supplied Central device configuration |
-
-`deploy/runtime.env` is the Jazzy runtime configuration. It has no ROS 1 master
-or TCPROS settings. `deploy/cyclonedds.xml` restricts DDS to `end1`, adds the
-Central PC as a discovery peer, and uses 1400-byte RTPS messages for MTU 1500.
-ROSBridge binds only to the private sensor address. The USB Ethernet interface
-`enx207bd2b1fe36` retains its existing DHCP internet, route and DNS configuration.
-
-The persistent NetworkManager profile has been saved on this board and will
-activate when its sensor cable is connected. Reproduce it with this script:
-
-```bash
-./ros2/tools/configure_network.sh             # print plan only
-sudo bash ros2/tools/configure_network.sh --apply
-```
-
-It refuses to modify `end1` if that port carries the current default route,
-backs up existing profiles, retains the original profiles, adds both static
-addresses, enables duplicate-address detection, and supplies no gateway or DNS.
-With no cable, the profile is saved for activation when carrier appears. If a
-cabled activation fails, the new profile is removed and the original `end1`
-profile is restored. Rollback after a successful configuration:
-
-```bash
-sudo nmcli connection delete sensor-computer
-sudo nmcli connection up 'Wired connection 1'
-```
-
-Keep the sensor subnet on one interface and retain the separate USB internet profile.
-
-## Unattended operation
-
-Systemd owns the production container lifecycle. The application is independent
-of desktop login/logout. ExecStartPost keeps systemd in activating state until
-valid, changing camera/LiDAR/IMU/fused samples arrive. Empty frames or a frozen
-repeated timestamp cannot establish health. It checks the local addresses, starts acquisition,
-processing and ROSBridge, and verifies fresh camera/LiDAR/IMU/fused messages.
-It does not wait for the Central computer. Missing streams, bridge handshake
-failure, or an essential process exit terminate the container and trigger a
-retry after 20 seconds. Startup gets 120 seconds for sensor streams, following
-a maximum 60-second address wait. Reconnection and real sensor recovery still
-need hardware acceptance testing.
-
-Install service files without enabling startup:
-
-```bash
-sudo bash ros2/tools/install_services.sh --install
-```
-
-After approval to enable permanent startup:
-
-```bash
-sudo bash ros2/tools/install_services.sh --enable
-systemctl status sensor-computer-jazzy.service
-sudo journalctl --namespace=sensor-computer -u sensor-computer-jazzy.service -f
-```
-
-There is one production container name, `sensor-computer-jazzy`. The unit
-conflicts with the legacy ROS 1 units and refuses to duplicate a running named
-container. Do not use Compose concurrently. `deploy/compose.yaml` is an
-alternative manual deployment with automatic restart disabled by default.
-
-The container runs as UID/GID 1001 with no capabilities or Docker socket,
-a read-only workspace/image, writable state under `ros2/state/home`, 5 GiB RAM /
-6 GiB combined RAM+swap limits, and a 512-process limit. Docker logs are capped
-at 30 MiB; the application journal namespace is capped at 256 MiB with maximum
-90-day retention. Detailed ROS logs use a bounded ephemeral `/tmp` tmpfs.
-Startup and the stream watchdog enforce a 2 GiB free-storage reserve.
-
-Stop or disable startup:
-
-```bash
-sudo systemctl stop sensor-computer-jazzy.service
-sudo systemctl disable --now sensor-computer-jazzy.service
-```
-
-Automatic suspend/hibernate and Plasma idle locking have already been disabled
-at the user's explicit request. Autologin is now configured for the next boot. KDE Plasma runs under **GDM**, so autologin uses
-the existing GDM configuration, not SDDM. Its separate staged script is:
-
-```bash
-./ros2/tools/configure_autologin.sh             # print plan only
-sudo bash ros2/tools/configure_autologin.sh --apply
-```
-
-It takes effect at the next login/boot and does not restart the current desktop.
-The reproducible power policy is `tools/disable_sleep.sh`. Backups are under
-`/var/backups/sensor-computer/` and the initial user power settings are in
-`../.local-deploy/power-backup/`. SSH authentication settings are unchanged.
-
-## Connect sensors and verify
-
-Connect the powered camera and Avia through the sensor switch to `end1`. The
-configured serial/broadcast code must match those physical devices. Once the
-approved service is running:
+## Check live data
 
 ```bash
 ./ros2/tools/diagnostics.sh
 ./ros2/tools/live_acceptance.sh
 ./ros2/tools/ros.sh run node_pc monitor.py
-./ros2/tools/ros.sh topic hz /camera/image_raw
-./ros2/tools/ros.sh topic hz /livox/lidar
-./ros2/tools/ros.sh topic hz /livox/imu
-./ros2/tools/ros.sh topic hz /merged_colored_cloud
-./ros2/tools/ros.sh topic bw /merged_colored_cloud
 ```
 
-The monitor subscribes to small status topics. It does not receive bulk images
-or intermediate clouds. The SDK enumeration probe source is
-`tools/sdk_probe.cpp`; its compiled copy is `state/sdk-probe` on this machine.
+![Live 12-second capture. 420 camera frames, 121 raw LiDAR scans, and 12 colourized clouds.](../docs/figures/device8-live-streams.png)
 
-Verify 484×366 camera geometry, approximately 35 camera frames per second,
-approximately 10 raw LiDAR scans per second, advancing IMU and fused frames,
-and matched-frame counts. Check the projection against real geometry when
-commissioning a new rig or after changing optics or sensor mounts.
+The [commissioning record](COMMISSIONING.md) documents the 12-second capture and Windows stream checks. See [Windows transport checks](TRANSPORTS.md) for ROSBridge and native DDS, and [recovery and boot audits](RELIABILITY.md) for service failures and post-boot verification.
 
-Device 8's hardware and the Windows ROSBridge path have been tested. The
-[commissioning record](COMMISSIONING.md) includes the observed streams and
-the separate Windows native DDS result. The [recovery record](RELIABILITY.md)
-covers the tested service and network failure cases and how to collect a boot audit.
-
-The host currently synchronizes its wall clock using NTP and has no readable
-RTC. Its existing systemd-timesyncd clock file now retains a current timestamp
-under `/var/lib/systemd/timesync/clock`; it cannot measure time while powered
-off. Offline boot and power-loss recovery can therefore have an approximate date;
-startup logs a clock warning instead of requiring a remote server. Relative
-timestamp conversion recovers after jumps, but absolute timestamps require a
-valid clock source. Power-supply quality and causes of earlier restarts remain
-unverified; no explicit current brownout/panic/OOM evidence was found.
-
-After boot, inspect `sudo cat /var/lib/sensor-computer/boot-audit.json`. The audit
-records infrastructure and live sensor readiness separately. Restart the app with
-`sudo systemctl restart sensor-computer-jazzy.service`; Docker restarts also restart
-the owning unit. Production uses systemd alone for retries, with no competing
-Docker restart policy. The default pipeline does not record bags locally.
-
-Live hardware was commissioned on 2026-11-24. See [COMMISSIONING.md](COMMISSIONING.md)
-for the device identity changes, persistent network settings, DDS receive-buffer
-tuning, SSH setup, measured live data and Windows transport results.
-
-See [RELIABILITY.md](RELIABILITY.md) for fault-injection results and the guarded
-reboot baseline / post-boot verification procedure.
+Changing the camera, optics, or LiDAR mount calls for checking calibration against real geometry.

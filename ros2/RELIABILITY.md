@@ -101,6 +101,6 @@ behaviour. No disk-filling, forced host OOM or hard power cut was performed.
 Long-duration running and camera/LiDAR calibration accuracy remain to be tested.
 The default pipeline does not record local rosbag files, so recording durability
 has not been certified. See the [Windows follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25)
-for read-only ROSBridge reception and the native DDS discovery result.
+for read-only ROSBridge reception and the DDS interface selection check.
 The server continues to expose DDS and
 ROSBridge together; it does not decide transport from subscriber counts.

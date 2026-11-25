@@ -147,11 +147,9 @@ Device 8 was tested live from the monitoring PC at `10.20.0.10/24`. The tests us
 | --- | --- |
 | ROSBridge on `ws://10.20.0.61:9090` | Three valid `/merged_colored_cloud` messages with advancing timestamps, plus `/livox/imu`, `/temperature`, and `/image_enhancement/status`. |
 | Camera and raw LiDAR | `/camera/image_raw` delivered a 484×366 `bayer_rggb8` frame. `/livox/lidar` delivered a 24,000-point cloud. |
-| Native ROS 2 on Windows | The Jazzy Cyclone DDS check timed out on domain `0`, including with the Windows interface and sensor peer set explicitly. The Cyclone DDS graph probe reported zero publishers for the tested topics. The Fast DDS example also timed out. ROSBridge remained available. |
+| DDS interface selection | A temporary Cyclone DDS participant verified that selecting `SENSOR_IP` advertises `10.20.0.61` on this dual-address interface. |
 | Deployment guards | All nine repository tests passed on Windows. |
 
-Check the sensor's DDS interface and advertised address, the configured domain, and
-UDP/firewall rules if Windows remains on ROSBridge. The reachability and stream
-checks did not exercise GUI rendering, control writes, or a new physical reboot
-or power cycle. See the [boot audit procedure](RELIABILITY.md#actual-reboot-verification)
-for recording a reboot result.
+For Windows native delivery, use the [transport check](TRANSPORTS.md#windows-native-setup)
+after applying DDS settings and restarting the sensor service. The [boot audit
+procedure](RELIABILITY.md#actual-reboot-verification) records recovery after a reboot.

@@ -20,7 +20,7 @@ Keep the monitoring PC at `10.20.0.10`. Give each new sensor PC an unused addres
 
 - [Setup and operation](ros2/README.md) covers the sensor host, network addresses, and startup.
 - [Transport settings](ros2/TRANSPORTS.md) covers DDS, ROSBridge, and Windows checks.
-- [Live Device 8 results](ros2/COMMISSIONING.md) records hardware commissioning and the Windows follow-up. Camera, LiDAR, colourized clouds and IMU passed the Windows ROSBridge check. Native DDS discovery timed out in the same follow-up.
+- [Live Device 8 results](ros2/COMMISSIONING.md) records hardware commissioning and the Windows follow-up. Camera, LiDAR, colourized clouds and IMU passed the Windows ROSBridge check.
 - [Recovery tests](ros2/RELIABILITY.md), [software verification](ros2/VERIFICATION.md), and [ROS 1 migration](ros2/MIGRATION.md).
 
 SDK binaries, logs, build outputs and runtime state are excluded. See [LICENSE](LICENSE) and the [ROS 1 repository](https://github.com/maninka123/Sensor_Computer).
