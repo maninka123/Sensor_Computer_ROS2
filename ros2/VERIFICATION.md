@@ -1,12 +1,8 @@
 # ROCK 5C verification record
 
-For the 2026-11-24 live hardware results and updated remaining checks, see
-[COMMISSIONING.md](COMMISSIONING.md). The November 13 record below is historical.
-
-Date: 2026-11-13 UTC. Hardware sensors and the Windows Central computer were
-unavailable; the user requested completion of software work with live tests
-explicitly pending. This is a software-verified deployment, not a claim of a
-fully commissioned sensor installation.
+See the [live commissioning and Windows results](COMMISSIONING.md) for the
+current Device 8 record. The November 13, 2026 results below used synthetic inputs
+while hardware and the Windows monitoring computer were unavailable.
 
 ## Completed checks
 
@@ -85,7 +81,7 @@ Re-run `./ros2/tools/verify.sh` and
 dependencies or transport configuration changes. Temporary clients use
 loopback ports 19090/19091 and domains 73/74, not the production endpoint.
 
-## Originally pending on 2026-11-13 (superseded by commissioning record)
+## Hardware checks outside the original software test
 
 Actual Avia LiDAR and IMU acquisition; physical camera discovery and acquisition;
 camera's persistent IP/settings; actual 484x366 / 35 FPS output; live timestamp
@@ -100,7 +96,7 @@ for it nor downloads dependencies. Existing systemd-timesyncd persists a recent
 clock timestamp, but offline time while powered off remains unknowable without
 a clock source. The sensor Ethernet initially has no carrier. The persistent NetworkManager profile and desktop autologin have been applied.
 The user subsequently authorized boot startup; readiness is gated on real changing
-sensor samples, and a boot audit records missing hardware separately. Applying configuration does not turn pending hardware tests into passes.
+sensor samples, and a boot audit records sensor readiness separately.
 
 The Central application itself was not changed. Universal mixed ROS 1/ROS 2
 connection-manager work is deferred to its own workspace, as clarified by the

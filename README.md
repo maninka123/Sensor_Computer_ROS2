@@ -1,15 +1,30 @@
-# Sensor Computer ROS 2 — ROCK 5C
+# Sensor Computer ROS 2
 
-ROS 2 Jazzy / Ubuntu 24.04 ARM64 in Docker on Radxa Debian 12. Livox Avia, FLIR Blackfly S, timestamp-aware fusion, thermal protection, DDS and always-available ROSBridge.
+ROS 2 Jazzy on the ROCK 5C synchronises a FLIR Blackfly S camera and a Livox Avia LiDAR and publishes a colourized point cloud. The pipeline runs in Ubuntu 24.04 ARM64 containers on the Radxa Debian 12 host.
 
-[Setup and operation](ros2/README.md) · [Verification results and limitations](ros2/VERIFICATION.md) · [DDS and Windows contract](ros2/TRANSPORTS.md) · [Migration](ros2/MIGRATION.md)
+- Colourized point clouds, camera frames, LiDAR and IMU data.
+- Native ROS 2 DDS and ROSBridge for the Central Monitoring Platform.
+- Low-light enhancement with thermal protection and automatic pipeline recovery.
 
-Sensor addresses: 10.20.0.61/24 and 192.168.1.50/24 on end1. ROSBridge: ws://10.20.0.61:9090. DDS domain 0 for this rig. Additional rigs need isolated DDS domains or verified namespaces.
+## One monitoring PC, multiple sensors
 
-Systemd starts independently of desktop login, internet and the Windows client. Readiness requires actual changing sensor/output samples. Software tests pass with synthetic data; physical sensors, Windows, reboot and power-cycle commissioning remain pending.
+| Computer | Ethernet IP | ROSBridge endpoint |
+| --- | --- | --- |
+| Windows monitoring PC | `10.20.0.10/24` | Connects to each sensor |
+| Device 8 sensor PC | `10.20.0.61/24` | `ws://10.20.0.61:9090` |
+| Example additional sensor PC | `10.20.0.71/24` | `ws://10.20.0.71:9090` |
 
-SDK binaries, logs, build outputs and runtime state are excluded. The original ROS 1 repository remains unchanged at https://github.com/maninka123/Sensor_Computer. See LICENSE.
+Keep the monitoring PC at `10.20.0.10`. Give each new sensor PC an unused address on the monitoring network and add its own endpoint to the app. Device 8 uses DDS domain `0`. Give additional ROS 2 rigs with the same topic names separate DDS domains and use the matching domain in each app profile. The `10.30.0.x` examples in the ROS 1 guide describe a separate monitoring network.
+
+## Setup and verification
+
+- [Setup and operation](ros2/README.md) covers the sensor host, network addresses, and startup.
+- [Transport settings](ros2/TRANSPORTS.md) covers DDS, ROSBridge, and Windows checks.
+- [Live Device 8 results](ros2/COMMISSIONING.md) records hardware commissioning and the Windows follow-up. Camera, LiDAR, colourized clouds and IMU passed the Windows ROSBridge check. Native DDS discovery timed out in the same follow-up.
+- [Recovery tests](ros2/RELIABILITY.md), [software verification](ros2/VERIFICATION.md), and [ROS 1 migration](ros2/MIGRATION.md).
+
+SDK binaries, logs, build outputs and runtime state are excluded. See [LICENSE](LICENSE) and the [ROS 1 repository](https://github.com/maninka123/Sensor_Computer).
 
 ## UNSW collection
 
-Pushes to personal `main` automatically update `Sensor_Computer_ROS2/` in the [UNSW AMT collection](https://github.com/unsw-edu-au/AMT-project). See [repository sync and existing working folders](docs/amt-repository-sync.md).
+Pushes to `main` update `Sensor_Computer_ROS2/` in the [UNSW AMT collection](https://github.com/unsw-edu-au/AMT-project) through GitHub Actions. See [repository sync and working folders](docs/amt-repository-sync.md).

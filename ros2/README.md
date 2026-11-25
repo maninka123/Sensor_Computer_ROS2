@@ -59,16 +59,30 @@ The resulting images are `sensor-computer:jazzy-dev` and
 `--local` selects an isolated loopback test domain; omit it for the sensor LAN.
 The wrapper handles this session's not-yet-refreshed Docker group membership.
 
-## Network values for this computer
+## One monitoring PC, multiple sensor PCs
+
+Set the Windows monitoring adapter to `10.20.0.10/24`. Each sensor PC has its own address and app profile. All rigs can use ROSBridge port `9090`.
+
+| Computer | Monitoring-network IP | ROSBridge | DDS domain |
+| --- | --- | --- | --- |
+| Windows monitoring PC | `10.20.0.10/24` | Connects to each sensor | Per sensor profile |
+| Device 8 | `10.20.0.61/24` | `ws://10.20.0.61:9090` | `0` |
+| Example additional ROS 2 rig | `10.20.0.71/24` | `ws://10.20.0.71:9090` | `1` |
+
+Use an unused address for each new rig. Set the sensor address and domain in its deployment configuration, then set the same address, ROSBridge port, and domain in its Windows profile. See [`deploy/runtime.env`](deploy/runtime.env) and [`deploy/device_8.env.example`](deploy/device_8.env.example). Give each rig using the default topic names a separate DDS domain, including rigs accessed through ROSBridge. The `configure_network.sh` example is specific to Device 8. Adapt its addresses and interface to the new rig before applying it.
+
+The camera and LiDAR addresses below are used by the sensor PC. Rigs can reuse those internal addresses when their sensor networks are isolated. If the camera or LiDAR traffic shares a switch and VLAN with other rigs, assign unique addresses on the shared network.
+
+## Network values for Device 8
 
 | Component | Setting |
 |---|---|
 | Sensor Ethernet interface | `end1` |
-| Sensor/server address | `10.20.0.61/24` |
+| Sensor PC address on the monitoring network | `10.20.0.61/24` |
 | Livox host address on the same interface | `192.168.1.50/24` |
 | FLIR Blackfly S | `10.20.0.22`, serial `25120439` |
 | Original Livox Avia | `192.168.1.125`, broadcast code `3JEDN920015M711` |
-| Central computer | `10.20.0.10/24` |
+| Windows monitoring PC | `10.20.0.10/24` |
 | ROSBridge | `ws://10.20.0.61:9090` |
 | DDS domain for this first ROS 2 rig | `0`, per the supplied Central device configuration |
 
@@ -98,10 +112,7 @@ sudo nmcli connection delete sensor-computer
 sudo nmcli connection up 'Wired connection 1'
 ```
 
-Do not change the USB internet profile or assign the same sensor subnet to two
-interfaces. Additional rigs on a shared switch must use unique sensor/host
-addresses, or separate private sensor LANs. Every rig using these absolute ROS 2
-topic names must also have its own DDS domain. IP addresses alone do not isolate DDS.
+Keep the sensor subnet on one interface and retain the separate USB internet profile.
 
 ## Unattended operation
 
@@ -184,12 +195,15 @@ The monitor subscribes to small status topics. It does not receive bulk images
 or intermediate clouds. The SDK enumeration probe source is
 `tools/sdk_probe.cpp`; its compiled copy is `state/sdk-probe` on this machine.
 
-Verify 484x366 camera geometry at 35 FPS, approximately 10 Hz LiDAR output,
-actual Avia IMU rate, matched-frame counts and colour projection against real
-geometry. Calibration is retained from the original rig; moving sensors or using
-different optics requires recalibration. Test camera/LiDAR unplug and reconnect,
-real Windows delivery/control, repeated approved reboots, and sustained load.
-No real hardware, physical-network, Windows, or reboot test has been claimed.
+Verify 484×366 camera geometry, approximately 35 camera frames per second,
+approximately 10 raw LiDAR scans per second, advancing IMU and fused frames,
+and matched-frame counts. Check the projection against real geometry when
+commissioning a new rig or after changing optics or sensor mounts.
+
+Device 8's hardware and the Windows ROSBridge path have been tested. The
+[commissioning record](COMMISSIONING.md) includes the observed streams and
+the separate Windows native DDS result. The [recovery record](RELIABILITY.md)
+covers the tested service and network failure cases and how to collect a boot audit.
 
 The host currently synchronizes its wall clock using NTP and has no readable
 RTC. Its existing systemd-timesyncd clock file now retains a current timestamp
@@ -204,12 +218,11 @@ After boot, inspect `sudo cat /var/lib/sensor-computer/boot-audit.json`. The aud
 records infrastructure and live sensor readiness separately. Restart the app with
 `sudo systemctl restart sensor-computer-jazzy.service`; Docker restarts also restart
 the owning unit. Production uses systemd alone for retries, with no competing
-Docker restart policy. The default pipeline does not record bags locally; no
-recording durability or physical power-cycle result is claimed.
+Docker restart policy. The default pipeline does not record bags locally.
 
 Live hardware was commissioned on 2026-11-24. See [COMMISSIONING.md](COMMISSIONING.md)
 for the device identity changes, persistent network settings, DDS receive-buffer
-tuning, SSH setup, measured live data and remaining physical acceptance checks.
+tuning, SSH setup, measured live data and Windows transport results.
 
 See [RELIABILITY.md](RELIABILITY.md) for fault-injection results and the guarded
 reboot baseline / post-boot verification procedure.

@@ -65,11 +65,12 @@ changing the message's timestamps, endian flag, row stride or field definitions.
 
 ## Windows native setup
 
-Use a supported Jazzy installation and a compatible RMW, the same domain, and
-an adapter on `10.20.0.0/24`. Cyclone DDS is the ROCK's RMW. A Jazzy Fast DDS
-client successfully received its clouds, IMU and transient-local status in a
-real same-host Linux interoperability test. That establishes middleware-level
-interop; Windows binaries, firewall and the physical link still need testing.
+Use a supported Jazzy installation, the configured domain, and the Windows
+adapter on `10.20.0.0/24`. Device 8 uses Cyclone DDS. A separate Jazzy Fast DDS
+client received its clouds, IMU and transient-local status in a same-host Linux
+test. The Windows live test received ROSBridge streams; its Cyclone DDS probe
+timed out without discovering Device 8's publishers. See the
+[Windows follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25).
 
 `deploy/fastdds-windows.example.xml` is a private-interface/unicast-peer example
 for Central `10.20.0.10`, sensor `10.20.0.61` and domain 0. Review it against the
@@ -89,18 +90,16 @@ $env:FASTRTPS_DEFAULT_PROFILES_FILE = (Resolve-Path .\fastdds-windows.example.xm
 python .\central_transport_check.py --transport dds
 ```
 
-ROSBridge-only validation needs Python and `websocket-client`, without a native
-ROS installation:
+From Windows, Python with `websocket-client` can verify live ROSBridge delivery:
 
 ```powershell
-python .\central_transport_check.py --transport websocket --url ws://10.20.0.61:9090 --check-controls
+python .\central_transport_check.py --transport websocket --url ws://10.20.0.61:9090 --frames 3 --timeout 24
 ```
 
-`--check-controls` briefly changes voxel size, waits for feedback, then restores
-the original value. `--transport both` checks both paths. The exact utility was
-tested as a separate Linux DDS client and JSON WebSocket client against the
-ported pipeline, including control acknowledgement/restoration. It is a test
-utility, not the Central application's transport manager.
+For native DDS, use the helper from a Jazzy-enabled shell with the interface and
+peer settings appropriate for the chosen RMW. `--check-controls` is optional
+and briefly changes voxel size before restoring it. The read-only Windows
+follow-up used subscriptions only.
 
 Permit DDS UDP traffic between the two private sensor-network addresses in
 Windows Firewall and the ROSBridge TCP connection to port 9090. Discovery and

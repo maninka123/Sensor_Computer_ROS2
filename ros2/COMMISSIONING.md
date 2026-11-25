@@ -62,8 +62,7 @@ large cloud JSON; the checker now opens a separate control/status socket to
 avoid that backlog. Use a separate control socket in Central for responsive
 controls while large fallback streams are active. These are ROCK-side client
 tests, not verified Windows application reception or Ethernet latency tests.
-The Windows host connected to ROSBridge; its application rendering and native
-DDS acceptance still require confirmation on that host.
+See the [November 25 follow-up](#windows-follow-up--2026-11-25) for the separate Windows checks.
 
 Seven deployment guard tests, the additional IMU DDS regression, and all nine
 pipeline integration tests passed. Evidence is local under
@@ -135,13 +134,24 @@ initial setup and removed afterward. Do not configure arbitrary discovered
 sensors or invoke these tools automatically at boot. Restore acquisition with
 `sudo systemctl start sensor-computer-jazzy` after provisioning.
 
-## Remaining physical acceptance
+## Calibration and later checks
 
-New physical camera/LiDAR calibration and projection accuracy need validation;
-old calibration values were preserved. CameraInfo has no verified calibration
-file. The initial out-of-order camera issue was traced to a LIFO driver queue and
-corrected during the later [reliability review](RELIABILITY.md). Long-duration rates/thermal
-behaviour, physical unplug/reconnect, full shutdown/boot/power loss and sensor
-persistent settings after physical power cycling remain pending. SSH reachability
-from Windows is observed, but Windows login, rendering, DDS firewall/discovery,
-end-to-end latency and bandwidth must be measured there.
+Validate projection accuracy on the calibrated rig whenever the camera or LiDAR
+mount changes. The initial out-of-order camera issue was traced to a LIFO driver queue and
+corrected during the later [reliability review](RELIABILITY.md).
+## Windows follow-up — 2026-11-25
+
+Device 8 was tested live from the monitoring PC at `10.20.0.10/24`. The tests used read-only subscriptions.
+
+| Check | Observed result |
+| --- | --- |
+| ROSBridge on `ws://10.20.0.61:9090` | Three valid `/merged_colored_cloud` messages with advancing timestamps, plus `/livox/imu`, `/temperature`, and `/image_enhancement/status`. |
+| Camera and raw LiDAR | `/camera/image_raw` delivered a 484×366 `bayer_rggb8` frame. `/livox/lidar` delivered a 24,000-point cloud. |
+| Native ROS 2 on Windows | The Jazzy Cyclone DDS check timed out on domain `0`, including with the Windows interface and sensor peer set explicitly. The Cyclone DDS graph probe reported zero publishers for the tested topics. The Fast DDS example also timed out. ROSBridge remained available. |
+| Deployment guards | All nine repository tests passed on Windows. |
+
+Check the sensor's DDS interface and advertised address, the configured domain, and
+UDP/firewall rules if Windows remains on ROSBridge. The reachability and stream
+checks did not exercise GUI rendering, control writes, or a new physical reboot
+or power cycle. See the [boot audit procedure](RELIABILITY.md#actual-reboot-verification)
+for recording a reboot result.

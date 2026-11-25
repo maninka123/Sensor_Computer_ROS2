@@ -88,10 +88,9 @@ systemctl is-enabled docker ssh sensor-computer-jazzy
 sudo systemctl disable --now sensor-computer-jazzy  # maintenance
 ```
 
-At publication, the real host reboot is the next step; it is not pre-labelled as
-passed. The local post-boot JSON is the authoritative result until reviewed and
-uploaded. It also records clock synchronization: offline absolute time still
-needs a valid clock source; the pipeline does not wait for installation internet.
+The local post-boot JSON is the record for a physical reboot. It also records
+clock synchronization. Offline absolute time still needs a valid clock source;
+the pipeline starts independently of the installation internet connection.
 
 ## Limits requiring physical or remote observation
 
@@ -101,7 +100,7 @@ or corrupted hardware. A software reboot does not certify sudden power-loss
 behaviour. No disk-filling, forced host OOM or hard power cut was performed.
 Long-duration running and camera/LiDAR calibration accuracy remain to be tested.
 The default pipeline does not record local rosbag files, so recording durability
-has not been certified. Windows native discovery/firewall settings, rendering,
-transport failover, SSH login and end-to-end latency still require verification
-on the Windows application itself. The server continues to expose DDS and
+has not been certified. See the [Windows follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25)
+for read-only ROSBridge reception and the native DDS discovery result.
+The server continues to expose DDS and
 ROSBridge together; it does not decide transport from subscriber counts.
