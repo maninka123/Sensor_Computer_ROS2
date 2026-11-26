@@ -1,8 +1,8 @@
 # Reliability review — 24 November 2026
 
-This record distinguishes faults actually injected on the ROCK 5C from physical
-and Windows-side acceptance that still needs observation. It is not a guarantee
-that every possible hardware or software failure has been eliminated.
+This record documents fault-injection and recovery checks on the ROCK 5C. The
+[Device 8 follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25) records
+automatic startup and live Windows reception.
 
 ## Corrections
 
@@ -101,6 +101,6 @@ behaviour. No disk-filling, forced host OOM or hard power cut was performed.
 Long-duration running and camera/LiDAR calibration accuracy remain to be tested.
 The default pipeline does not record local rosbag files, so recording durability
 has not been certified. See the [Windows follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25)
-for read-only ROSBridge reception and the DDS interface selection check.
+for live ROSBridge and native DDS reception and automatic startup.
 The server continues to expose DDS and
 ROSBridge together; it does not decide transport from subscriber counts.

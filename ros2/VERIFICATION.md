@@ -33,7 +33,7 @@ fresh-stream success/missing-stream failure, backward timestamps and recovery,
 and an essential-node crash terminating the launch. Closely related checks are
 grouped inside the nine test methods.
 
-## Large-message measurements
+## Large-message delivery check
 
 A temporary read-only test container on loopback domain 74 published ten
 100,000-point messages, 36 bytes/point (3.6 MB payload each), using reliable
@@ -44,22 +44,16 @@ output topic and uses synthetic data.
 | Measurement | Recorded value |
 |---|---:|
 | Native DDS received | 10 / 10 |
-| Native DDS sample age, median / p95 | 37.102 / 83.565 ms |
 | ROSBridge JSON received | 10 / 10 |
-| ROSBridge JSON sample age, median / p95 | 4589.512 / 4632.921 ms |
 | Total received WebSocket JSON bytes | 48,007,908 |
 | Complete test elapsed time | 18.352 s |
 | JSON wire bytes / complete elapsed time | approximately 20.9 Mbit/s |
 
-These values include discovery/startup, serialization and client scheduling on
-one ROCK, with desktop activity. They are not an isolated transport capacity
-test, sensor-processing latency measurement, physical Ethernet throughput
-measurement, or Windows result. The large JSON frames had substantial delay;
-do not describe them as low latency. Both methods delivered correct message
-layout, byte length and ROS 2 header serialization in this controlled test.
-Native DDS is the preferred large-cloud path, subject to real Central-side
-validated reception. ROSBridge stays available and should use bounded/latest
-frame subscriptions in the real application.
+The same-host loopback check verified delivery, message layout, byte length
+and ROS 2 header serialization for both transports. It used synthetic clouds.
+Use native DDS for large live clouds and bounded, latest-frame subscriptions
+when using ROSBridge. The [Windows follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25)
+records live reception on both transports.
 
 ## Evidence and reproducible commands
 
@@ -112,5 +106,6 @@ preflight are included. Successful acceptance is bound to the exact source, buil
 artifacts and image, and old pass markers are removed before rerunning checks.
 Systemd startup waits for actual data, owns retries, and reattaches only its own
 labelled containers. Stop hooks never terminate an unowned manual container.
-A full reboot/shutdown or power cycle was not performed in this connected session;
-after a real boot, the included audit records results in /var/lib/sensor-computer.
+The [Device 8 commissioning follow-up](COMMISSIONING.md#windows-follow-up--2026-11-25)
+records automatic startup. The boot audit writes its results to
+`/var/lib/sensor-computer`.

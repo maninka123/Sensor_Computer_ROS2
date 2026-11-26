@@ -60,9 +60,9 @@ temperature and status. A ROSBridge voxel-size command, status acknowledgement
 and restoration passed. An initial combined-socket control test timed out behind
 large cloud JSON; the checker now opens a separate control/status socket to
 avoid that backlog. Use a separate control socket in Central for responsive
-controls while large fallback streams are active. These are ROCK-side client
-tests, not verified Windows application reception or Ethernet latency tests.
-See the [November 25 follow-up](#windows-follow-up--2026-11-25) for the separate Windows checks.
+controls while large fallback streams are active. These checks used clients on
+the ROCK 5C. The [November 25 follow-up](#windows-follow-up--2026-11-25)
+records live Windows reception over ROSBridge and native DDS.
 
 Seven deployment guard tests, the additional IMU DDS regression, and all nine
 pipeline integration tests passed. Evidence is local under
@@ -84,8 +84,9 @@ The corrected driver was started with the actual connected Avia and stopped by
 SIGINT: **exit status 0**, with SDK deinitialization logged. Repeated with the old,
 unmatched broadcast code (no sensor connected to that driver): **exit status 0**.
 This verifies graceful software shutdown with both present and absent sensors.
-The systemd pipeline was then restarted for continued live acquisition. Full
-physical reboot/power-cycle validation remains pending.
+The systemd pipeline was then restarted for continued live acquisition. The
+[November 25 follow-up](#windows-follow-up--2026-11-25) records automatic
+startup and time to live data.
 
 ## SSH and operation
 
