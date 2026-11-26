@@ -149,7 +149,7 @@ Device 8 was tested live from the monitoring PC at `10.20.0.10/24`. The tests us
 | Camera and raw LiDAR | `/camera/image_raw` delivered a 484×366 `bayer_rggb8` frame. `/livox/lidar` delivered a 24,000-point cloud. |
 | DDS interface selection | A temporary Cyclone DDS participant verified that selecting `SENSOR_IP` advertises `10.20.0.61` on this dual-address interface. |
 | Windows native DDS after the profile update | Five valid colourized clouds with advancing timestamps, plus IMU, temperature, and enhancement status, using the Central app's Cyclone DDS settings on domain `0`. |
-| Recovery after a power cycle | The sensor Ethernet profile activated about 12 seconds into boot. Systemd reported the live pipeline ready after about 35 seconds. |
+| Automatic startup | Ethernet was ready about 12 seconds into boot. The ROS 2 pipeline was ready after about 35 seconds. |
 | Deployment guards | All nine repository tests passed on Windows. |
 
 For Windows native delivery, use the [transport check](TRANSPORTS.md#windows-native-setup)
